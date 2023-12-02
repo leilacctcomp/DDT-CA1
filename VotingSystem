@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+contract VotingSystem {
+    address public admin;
+    mapping(address => bool) public registeredVoters;
+    mapping(bytes32 => uint) public votesReceived;
+    bytes32[] public candidateList;
+    address[] public registeredVoterAddresses;
+    mapping(address => bool) public hasVoted;
+
+    event ContractDeployed(address admin, uint candidateCount);
+    event VoterRegistered(address voter);
+    event VoteCasted(address voter, bytes32 candidate);
+
+    // Constructor to initialize the admin and candidates
+    constructor(bytes32[] memory candidateNames) {
+        require(candidateNames.length > 0, "Candidate list cannot be empty");
+        admin = msg.sender;
+        require(admin != address(0), "Admin address cannot be the zero address");
+        candidateList = candidateNames;
+        emit ContractDeployed(admin, candidateList.length);
+    }
+
+    // Function to register a voter
+    function registerVoter(address voter) public {
+        require(msg.sender == admin, "Only admin can register voters");
+        require(!registeredVoters[voter], "Voter is already registered");
+        registeredVoters[voter] = true;
+        registeredVoterAddresses.push(voter);
+        emit VoterRegistered(voter);
+    }
+
+    // Function to get the list of registered voters
+    function getRegisteredVoters() public view returns (address[] memory) {
+        return registeredVoterAddresses;
+    }
+
+    // Function to vote for a candidate
+    function vote(bytes32 candidate) public {
+        require(registeredVoters[msg.sender], "Must be a registered voter");
+        require(!hasVoted[msg.sender], "Voter has already voted");
+        require(validCandidate(candidate), "Invalid candidate");
+
+        votesReceived[candidate] += 1;
+        hasVoted[msg.sender] = true;
+        emit VoteCasted(msg.sender, candidate);
+    }
+
+    // Function to check if a candidate is valid
+    function validCandidate(bytes32 candidate) view public returns (bool) {
+        for (uint i = 0; i < candidateList.length; i++) {
+            if (candidateList[i] == candidate) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Function to get total votes for a candidate
+    function totalVotesFor(bytes32 candidate) view public returns (uint) {
+        require(validCandidate(candidate), "Invalid candidate");
+        return votesReceived[candidate];
+    }
+}
